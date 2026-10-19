@@ -1,0 +1,18 @@
+{
+ "vmc204-chatter": {
+  "machine_id": "VMC-204",
+  "truth": "chatter_marks"
+ },
+ "vmc201-good": {
+  "machine_id": "VMC-201",
+  "truth": "none"
+ },
+ "die501-porosity": {
+  "machine_id": "DIE-501",
+  "truth": "porosity"
+ },
+ "die502-good": {
+  "machine_id": "DIE-502",
+  "truth": "none"
+ }
+}

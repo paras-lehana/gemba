@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gemba Phone Probe</title>
+  <meta name="description" content="Turn a phone into a vibration and sound sensor for an old machine that has no network port.">
+  <meta name="theme-color" content="#0b0d12">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/app.css?v=0.4.0">
+  <script>
+    try {
+      const t = localStorage.getItem("gemba-theme");
+      if (t) document.documentElement.dataset.theme = t;
+      else if (matchMedia("(prefers-color-scheme: light)").matches) document.documentElement.dataset.theme = "light";
+    } catch (e) {}
+  </script>
+  <style>
+    /* Phone-first. Tokens come from app.css; the fallbacks keep the page readable if it fails to load. */
+    html, body { height: auto; }
+    body { background: var(--bg, #0b0d12); color: var(--text, #e6e9ef); font: 15px/1.5 var(--sans, system-ui, sans-serif); margin: 0; overflow-x: hidden; }
+    .pw { max-width: 560px; margin: 0 auto; padding: 14px 16px calc(28px + env(safe-area-inset-bottom)); display: grid; gap: 12px; }
+    .ptop { display: flex; align-items: center; gap: 10px; }
+    .ptop .mark { font-weight: 700; font-size: 14px; padding: 3px 7px; border-radius: 6px; background: var(--accent, #f4e8c1); color: var(--accent-ink, #14110a); letter-spacing: .04em; }
+    .ptop h1 { font-size: 19px; }
+    .ptop a { margin-left: auto; font-size: 13px; min-height: 40px; display: inline-flex; align-items: center; }
+    .card { background: var(--panel, #131722); border: 1px solid var(--border, #2a3349); border-radius: var(--radius, 12px); padding: 14px; display: grid; gap: 10px; min-width: 0; }
+    .card h2 { font-size: 15px; }
+    .lead { color: var(--text-dim, #a3acbe); font-size: 14px; }
+    .sim-tag { display: inline-block; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+      border: 1px solid var(--border-2, #36415c); color: var(--text-dim, #a3acbe); }
+    .live-tag { border-color: var(--ok, #3ddc97); color: var(--ok, #3ddc97); }
+    .attach { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+    .attach select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border-2, #36415c); background: var(--panel-2, #1a2030); max-width: 100%; }
+    .pbtn { min-height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--border-2, #36415c); background: var(--panel-2, #1a2030);
+      font-weight: 600; cursor: pointer; width: 100%; }
+    .pbtn.go { background: var(--accent, #f4e8c1); color: var(--accent-ink, #14110a); border-color: transparent; font-size: 16px; }
+    .pbtn:disabled { opacity: .55; cursor: default; }
+    .btns { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    .meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .m { background: var(--panel-2, #1a2030); border: 1px solid var(--border, #2a3349); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+    .m .k { font-size: 12px; color: var(--text-dim, #a3acbe); }
+    .m .v { font-family: var(--mono, monospace); font-size: 20px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m .u { font-size: 12px; color: var(--text-faint, #7d879c); }
+    .bar { position: relative; height: 16px; border-radius: 8px; background: var(--panel-3, #222a3d); overflow: hidden; }
+    .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--ok, #3ddc97); transition: width .2s var(--ease, ease); }
+    .bar.hot i { background: var(--alarm, #ff6b6b); }
+    .bar b { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text, #e6e9ef); }
+    .bar-legend { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-faint, #7d879c); }
+    canvas { width: 100%; height: 120px; display: block; border-radius: 10px; background: var(--panel-2, #1a2030); border: 1px solid var(--border, #2a3349); }
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .steps span { height: 10px; border-radius: 5px; background: var(--panel-3, #222a3d); }
+    .steps span.on { background: var(--alarm, #ff6b6b); }
+    .reply { font-family: var(--mono, monospace); font-size: 12px; white-space: pre-wrap; word-break: break-word; color: var(--text-dim, #a3acbe);
+      background: var(--panel-2, #1a2030); border-radius: 8px; padding: 8px 10px; max-height: 160px; overflow: auto; }
+    .msg { border-radius: 10px; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border, #2a3349); background: var(--panel-2, #1a2030); }
+    .msg.warn { border-color: var(--watch, #ffb547); background: var(--watch-bg, rgba(255,181,71,.14)); }
+    .msg.bad { border-color: var(--alarm, #ff6b6b); background: var(--alarm-bg, rgba(255,107,107,.14)); }
+    .msg.good { border-color: var(--ok, #3ddc97); background: var(--ok-bg, rgba(61,220,151,.13)); }
+    .gs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    ol.how { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: var(--text-dim, #a3acbe); font-size: 14px; }
+    details summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-weight: 600; }
+    @media (min-width: 520px) { .btns { grid-template-columns: 2fr 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="pw" id="main">
+    <header class="ptop">
+      <span class="mark" aria-hidden="true">現場</span>
+      <h1>Phone probe</h1>
+      <a href="/#/" id="back">Control room</a>
+    </header>
+
+    <section class="card">
+      <h2>Your phone becomes a machine sensor</h2>
+      <p class="lead">Most machines in small factories are 10 to 25 years old and have no network port. A phone held against
+        the machine can <b>listen</b> (microphone) and <b>feel the shaking</b> (motion sensor). It works out three numbers four
+        times a second and sends only those numbers to Gemba, never the sound itself.</p>
+      <div class="attach">
+        <label for="mach" class="small">Attached to <span class="sim-tag">simulated machine</span></label>
+        <select id="mach" aria-label="Machine this phone is attached to">
+          <option value="VMC-201">VMC-201</option><option value="VMC-202" selected>VMC-202</option>
+          <option value="VMC-203">VMC-203</option><option value="VMC-204">VMC-204</option>
+        </select>
+      </div>
+      <p class="small dim" id="machNote">VMC-202 is a vertical machining centre in the fictional Pune plant. Your phone's
+        readings are real; the machine is simulated.</p>
+      <div class="msg" id="link" role="status">Checking which demo this phone is linked to…</div>
+    </section>
+
+    <section class="card">
+      <div class="btns">
+        <button class="pbtn go" id="start">Start sensing</button>
+        <button class="pbtn" id="test" title="For laptops and browsers without sensors">Test without sensors</button>
+      </div>
+      <div class="msg" id="perm" hidden></div>
+      <div class="gs"><span class="sim-tag" id="srcTag">not started</span><span class="small dim" id="rate"></span></div>
+      <div class="meters">
+        <div class="m"><div class="k">Main pitch</div><div class="v" id="hz">–</div><div class="u">Hz (cycles per second)</div></div>
+        <div class="m"><div class="k">Loudness</div><div class="v" id="snd">–</div><div class="u">0 = silent, 1 = max</div></div>
+        <div class="m"><div class="k">Shaking</div><div class="v" id="vib">–</div><div class="u">m/s² (RMS)</div></div>
+      </div>
+      <div>
+        <div class="small" style="margin-bottom:4px">Shaking against the limit</div>
+        <div class="bar" id="vibBar"><i></i><b id="vibMark"></b></div>
+        <div class="bar-legend"><span>0</span><span id="limitLbl">limit 1.8</span><span>5 m/s²</span></div>
+      </div>
+      <div>
+        <div class="small" style="margin-bottom:4px">Sound spectrum, 0 to 4 kHz (taller bar = louder pitch)</div>
+        <canvas id="spec" width="520" height="120" aria-label="Live sound spectrum"></canvas>
+      </div>
+      <div>
+        <div class="small" style="margin-bottom:4px">Loud readings in a row (4 trigger an alarm)</div>
+        <div class="steps" id="steps"><span></span><span></span><span></span><span></span></div>
+      </div>
+      <div class="msg" id="verdict" role="status">Press Start, then hold the phone against something that shakes or hums
+        (a fan, a washing machine, or just shake it by hand).</div>
+    </section>
+
+    <section class="card">
+      <h2>What Gemba sees now</h2>
+      <div class="gs"><span class="status st-idle" id="mstat">–</span><span class="small dim" id="mreason"></span></div>
+      <details>
+        <summary>Last reply from Gemba</summary>
+        <div class="reply" id="reply">Nothing sent yet.</div>
+      </details>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary>How to read these numbers</summary>
+        <ol class="how">
+          <li><b>Main pitch</b> is the loudest tone. A worn spindle bearing adds a hum or whine at a steady pitch; a change of
+            pitch is often the first sign of wear.</li>
+          <li><b>Loudness</b> is the average strength of the sound. Above 0.2 is loud.</li>
+          <li><b>Shaking</b> is how hard the phone is being shaken, without gravity. A phone on a desk reads about 0.05; above
+            1.8 counts as heavy shaking.</li>
+          <li>One loud reading can be a knock or a door. Gemba only raises the alarm after <b>4 in a row</b> (one second).</li>
+          <li>Then Gemba Watch on the laptop notices the machine and starts the agents, the same way a real alarm would.</li>
+        </ol>
+      </details>
+    </section>
+  </main>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const qs = new URLSearchParams(location.search);
+    const SID = /^[0-9a-f]{32}$/.test(qs.get("sid") || "") ? qs.get("sid") : "";
+    let machine = /^VMC-20[1-4]$/.test(qs.get("machine") || "") ? qs.get("machine") : "VMC-202";
+    $("mach").value = machine;
+    const VIB_MAX = 5;
+    let LIMITS = { vibration_rms: 1.8, sound_rms: 0.2, frames: 4 };
+
+    function hdrs(json) {
+      const hh = json ? { "Content-Type": "application/json" } : {};
+      if (SID) hh["X-Gemba-Session"] = SID;
+      return hh;
+    }
+    function setMsg(el, text, kind = "") { el.className = "msg" + (kind ? " " + kind : ""); el.textContent = text; el.hidden = false; }
+
+    // ------------------------------------------------------------------ link status
+    const STATUS = { ok: "Running fine", watch: "Watch", alarm: "Act now", down: "Stopped", sensor: "Sensor fault", idle: "Not scheduled", repair: "Planned repair" };
+    async function poll() {
+      try {
+        const r = await fetch(`/api/edge/status?machine=${machine}`, { headers: hdrs(false), credentials: "same-origin" });
+        if (!r.ok) throw new Error(r.status);
+        const d = await r.json();
+        LIMITS = { ...LIMITS, ...(d.limits || {}) };
+        const m = d.machine || {};
+        $("mstat").className = `status st-${m.status || "idle"}`;
+        $("mstat").textContent = `${m.id || machine}: ${STATUS[m.status] || m.status || "–"}`;
+        $("mreason").textContent = (m.reasons || []).join(", ") || (m.status === "ok" ? "all readings normal" : "");
+        if (SID) setMsg($("link"), `Linked to the demo on your laptop (session ${d.session}). What you do here shows up there.`, "good");
+        else setMsg($("link"), "Not linked to a laptop yet. Open this page from the QR code or link in Gemba so both screens share one demo. Until then this phone runs its own copy.", "warn");
+        $("machNote").textContent = m.can_trigger
+          ? `${m.id} is a vertical machining centre in the fictional Pune plant. Your phone's readings are real; the machine is simulated.`
+          : `${m.id} is simulated. Its readings are recorded, but in this demo only VMC-202 can be pushed into an alarm from the phone.`;
+      } catch (e) {
+        setMsg($("link"), "Gemba is not reachable right now. Check the connection and reload.", "bad");
+      }
+    }
+    $("mach").addEventListener("change", () => { machine = $("mach").value; hot = 0; drawSteps(); poll(); });
+    poll(); setInterval(poll, 3000);
+
+    // ------------------------------------------------------------------ sensing
+    let analyser = null, audioCtx = null, timeBuf = null, freqBuf = null;
+    let motion = { sum: 0, n: 0, g: null, seen: false };
+    let mode = null, timer = null, inFlight = false, hot = 0, sent = 0, t0 = 0, testPhase = 0;
+
+    function onMotion(e) {
+      let a = e.acceleration;
+      let x, y, z;
+      if (a && a.x != null) { x = a.x; y = a.y; z = a.z; }
+      else if (e.accelerationIncludingGravity && e.accelerationIncludingGravity.x != null) {
+        const g = e.accelerationIncludingGravity;     // remove gravity with a slow running average (high-pass)
+        motion.g = motion.g ? motion.g.map((v, i) => v * 0.9 + [g.x, g.y, g.z][i] * 0.1) : [g.x, g.y, g.z];
+        x = g.x - motion.g[0]; y = g.y - motion.g[1]; z = g.z - motion.g[2];
+      } else return;
+      motion.sum += (x || 0) ** 2 + (y || 0) ** 2 + (z || 0) ** 2;
+      motion.n += 1; motion.seen = true;
+    }
+
+    async function startLive() {
+      const notes = [];
+      let haveAudio = false, haveMotion = false;
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          setMsg($("perm"), "Waiting for you to allow the microphone (and, on iPhone, motion) in the browser prompt…", "");
+          const ask = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+          const media = await Promise.race([ask, new Promise((_, no) => setTimeout(() => no({ name: "no answer to the prompt" }), 15000))]);
+          audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+          const src = audioCtx.createMediaStreamSource(media);
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.3;
+          src.connect(analyser);
+          try { await audioCtx.resume(); } catch (e) {}
+          timeBuf = new Float32Array(analyser.fftSize);
+          freqBuf = new Float32Array(analyser.frequencyBinCount);
+          haveAudio = true;
+        } catch (e) {
+          const why = { NotAllowedError: "blocked in the browser", NotFoundError: "no microphone found", NotReadableError: "in use by another app" }[e.name] || e.name || "blocked";
+          notes.push(`Microphone: ${why}.`);
+        }
+      } else notes.push(window.isSecureContext ? "Microphone: not available on this browser." : "Microphone needs a secure (https) page.");
+      if (typeof DeviceMotionEvent !== "undefined") {
+        try {
+          if (typeof DeviceMotionEvent.requestPermission === "function") {      // iPhone / iPad ask first
+            const p = await DeviceMotionEvent.requestPermission();
+            if (p !== "granted") throw new Error("denied");
+          }
+          window.addEventListener("devicemotion", onMotion);
+          haveMotion = true;
+        } catch (e) { notes.push("Motion sensor: not allowed."); }
+      } else notes.push("Motion sensor: not available on this device (laptops usually have none).");
+      if (!haveAudio && !haveMotion) {
+        setMsg($("perm"), notes.join(" ") + " You can still try the demo with “Test without sensors”.", "warn");
+        return false;
+      }
+      setMsg($("perm"), notes.length ? notes.join(" ") + " Using the sensors that are allowed." : "Microphone and motion sensor are on. Only the three numbers leave the phone.", notes.length ? "warn" : "good");
+      try { await navigator.wakeLock?.request("screen"); } catch (e) {}
+      if (haveMotion) setTimeout(() => {       // desktop browsers expose the API but never send readings
+        if (mode === "live" && !motion.seen) setMsg($("perm"), ($("perm").textContent.startsWith("Microphone:") ? $("perm").textContent + " " : "")
+          + "No shaking readings from this device (laptops usually have no motion sensor). Try it on a phone, or use “Test without sensors”.", "warn");
+      }, 2000);
+      return true;
+    }
+
+    function readLive() {
+      let rms = 0, hz = 0;
+      if (analyser) {
+        analyser.getFloatTimeDomainData(timeBuf);
+        let s = 0;
+        for (let i = 0; i < timeBuf.length; i++) s += timeBuf[i] * timeBuf[i];
+        rms = Math.sqrt(s / timeBuf.length);
+        analyser.getFloatFrequencyData(freqBuf);
+        const binHz = audioCtx.sampleRate / analyser.fftSize;
+        let best = -Infinity, bi = 0;
+        for (let i = Math.ceil(30 / binHz); i < freqBuf.length; i++) if (freqBuf[i] > best) { best = freqBuf[i]; bi = i; }
+        hz = best > -85 ? bi * binHz : 0;      // below about -85 dB there is no clear tone, only background hiss
+        drawSpectrum(freqBuf, binHz, bi);
+      }
+      let vib = 0;
+      if (motion.n) { vib = Math.sqrt(motion.sum / motion.n); motion.sum = 0; motion.n = 0; }
+      return { hz, rms, vib };
+    }
+
+    // "Test without sensors": a made-up signal that rises like a worn bearing (labelled as simulated everywhere).
+    function readTest() {
+      testPhase += 1;
+      const ramp = Math.min(1, testPhase / 16);
+      const vib = 0.15 + ramp * 2.4 + Math.random() * 0.25;
+      const hz = 118 + Math.random() * 6;
+      const rms = 0.02 + ramp * 0.12 + Math.random() * 0.01;
+      const binHz = 46.875, bins = new Float32Array(512);
+      for (let i = 0; i < bins.length; i++) bins[i] = -95 + Math.random() * 10 + (Math.abs(i * binHz - hz) < binHz ? 60 * ramp : 0) + (Math.abs(i * binHz - 2 * hz) < binHz ? 35 * ramp : 0);
+      drawSpectrum(bins, binHz, Math.round(hz / binHz));
+      return { hz, rms, vib };
+    }
+
+    function css(name, fb) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fb; }
+    function drawSpectrum(bins, binHz, peak) {
+      const c = $("spec"), ctx = c.getContext("2d");
+      const w = c.width = Math.round(c.clientWidth * devicePixelRatio), hgt = c.height = Math.round(c.clientHeight * devicePixelRatio);
+      ctx.clearRect(0, 0, w, hgt);
+      const n = Math.min(bins.length, Math.floor(4000 / binHz));
+      const bw = w / n;
+      for (let i = 1; i < n; i++) {
+        const v = Math.max(0, Math.min(1, (bins[i] + 100) / 70));
+        ctx.fillStyle = i === peak ? css("--alarm", "#ff6b6b") : css("--flow", "#33d1e0");
+        ctx.fillRect(i * bw, hgt - v * hgt, Math.max(1, bw - 1), v * hgt);
+      }
+      ctx.fillStyle = css("--text-faint", "#7d879c");
+      ctx.font = `${11 * devicePixelRatio}px sans-serif`;
+      for (const f of [500, 1000, 2000, 3000]) ctx.fillText(f >= 1000 ? `${f / 1000}k` : String(f), (f / binHz) * bw + 2, 12 * devicePixelRatio);
+    }
+
+    function drawSteps() { [...$("steps").children].forEach((s, i) => s.classList.toggle("on", i < Math.min(hot, LIMITS.frames || 4))); }
+
+    async function frame() {
+      const r = mode === "test" ? readTest() : readLive();
+      $("hz").textContent = r.hz ? Math.round(r.hz) : "–";
+      $("snd").textContent = r.rms.toFixed(3);
+      $("vib").textContent = mode === "live" && !motion.seen ? "–" : r.vib.toFixed(2);
+      const lim = LIMITS.vibration_rms || 1.8;
+      $("vibBar").classList.toggle("hot", r.vib > lim);
+      $("vibBar").firstElementChild.style.width = `${Math.min(100, (r.vib / VIB_MAX) * 100)}%`;
+      $("vibMark").style.left = `${(lim / VIB_MAX) * 100}%`;
+      $("limitLbl").textContent = `limit ${lim}`;
+      if (inFlight) return;
+      inFlight = true;
+      const body = { machine_id: machine, dominant_hz: Math.round(r.hz * 10) / 10, sound_rms: Math.round(r.rms * 10000) / 10000,
+        vibration_rms: Math.round(r.vib * 1000) / 1000, source: mode === "test" ? "SIMULATED_TEST_SIGNAL" : "LIVE_MOBILE_EDGE" };
+      try {
+        const res = await fetch("/api/edge/ingest", { method: "POST", headers: hdrs(true), credentials: "same-origin", body: JSON.stringify(body) });
+        const d = await res.json();
+        sent += 1;
+        hot = d.hot || 0;
+        drawSteps();
+        $("rate").textContent = `${sent} readings sent · ${(sent / ((performance.now() - t0) / 1000)).toFixed(1)} per second`;
+        $("reply").textContent = JSON.stringify({ sent: body, reply: d }, null, 1);
+        if (d.triggered) {
+          setMsg($("verdict"), m_can() ? `Alarm sent. ${machine} shook past the limit 4 times in a row, so Gemba now treats it as a wearing spindle bearing. Look at the laptop: Gemba Watch picks it up within a few seconds.`
+            : `Readings recorded for ${machine}.`, "bad");
+          if (d.note) poll();
+        } else if (d.note) setMsg($("verdict"), d.note, "warn");
+        else if (hot) setMsg($("verdict"), `Loud reading ${hot} of ${LIMITS.frames || 4}. Keep it going for one second to raise the alarm.`, "warn");
+        else setMsg($("verdict"), "Readings look calm. Shake the phone or hold it against something that hums to see the alarm.", "");
+      } catch (e) {
+        setMsg($("verdict"), "Could not reach Gemba. Readings will be sent again when the connection is back.", "bad");
+      } finally { inFlight = false; }
+    }
+    const m_can = () => machine === "VMC-202";
+
+    function run(kind) {
+      mode = kind; sent = 0; t0 = performance.now(); testPhase = 0;
+      $("srcTag").textContent = kind === "test" ? "simulated test signal" : "live phone sensors";
+      $("srcTag").className = "sim-tag" + (kind === "test" ? "" : " live-tag");
+      clearInterval(timer);
+      timer = setInterval(frame, 250);
+      $("start").textContent = "Stop";
+      $("test").disabled = kind === "test";
+      if (kind === "test") setMsg($("perm"), "Test signal: made-up numbers that rise like a wearing bearing. Nothing here comes from a real sensor.", "warn");
+    }
+    function stop() {
+      clearInterval(timer); timer = null; mode = null;
+      window.removeEventListener("devicemotion", onMotion);
+      try { audioCtx?.close(); } catch (e) {}
+      analyser = null; audioCtx = null;
+      $("start").textContent = "Start sensing"; $("test").disabled = false;
+      $("srcTag").textContent = "stopped"; $("srcTag").className = "sim-tag";
+    }
+    $("start").addEventListener("click", async () => {
+      if (timer) return stop();
+      $("start").disabled = true;
+      // Create and resume the audio engine inside the tap itself: browsers only let sound start from a user gesture,
+      // and the permission prompt can take longer than that gesture lasts.
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) { audioCtx = null; }
+      const ok = await startLive();
+      $("start").disabled = false;
+      if (ok) run("live");
+    });
+    $("test").addEventListener("click", () => { if (timer) stop(); run("test"); });
+  </script>
+</body>
+</html>

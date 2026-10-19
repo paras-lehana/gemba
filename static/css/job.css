@@ -1,0 +1,103 @@
+/* Job view (technician phone page) and work-order list, v0.4. Tokens only, so light and dark both work. */
+
+/* ---------------------------------------------------------------- job header + progress */
+.jobv { gap: 12px; }
+.jobv h1 { margin: 0; }
+.jback { display: inline-flex; align-items: center; min-height: 40px; }
+.jexplain { margin: 0; font-size: 15px; line-height: 1.5; }
+.jprog { display: grid; gap: 6px; padding: 12px 14px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--border); }
+.jbar { display: block; position: relative; height: 10px; border-radius: 999px; background: var(--panel-3); overflow: hidden; }
+.jbar > i { position: absolute; inset: 0 auto 0 0; background: var(--ok); border-radius: 999px; transition: width .35s var(--ease); }
+
+/* ---------------------------------------------------------------- steps: the whole row is the control */
+.jsteps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.jstep { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.jstep-main { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: start; width: 100%; min-height: 64px; padding: 14px;
+  text-align: left; background: transparent; border: 0; cursor: pointer; color: var(--text); }
+.jstep-main:hover { background: var(--panel-2); }
+.jstep-main:active { background: var(--panel-3); }
+.jstep-main:focus-visible { outline: 3px solid var(--link); outline-offset: -3px; border-radius: var(--radius); }
+.jbox { width: 44px; height: 44px; border-radius: 10px; border: 2.5px solid var(--border-2); background: var(--panel-2);
+  display: grid; place-items: center; font-size: 22px; font-weight: 700; line-height: 1; }
+.jbody { display: grid; gap: 4px; min-width: 0; }
+.jnum { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); }
+.jtext { font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+.jhint { font-size: 13px; color: var(--text-dim); }
+.jhint.tap { color: var(--link); font-weight: 600; }
+.jstep:not(.next) .jhint.tap { color: var(--text-dim); font-weight: 500; }
+.jhint.lock { color: var(--text-faint); }
+.jnow { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  background: var(--accent); color: var(--accent-ink); }
+
+/* next open step: "Do this now" */
+.jstep.next { border: 2px solid var(--link); box-shadow: 0 0 0 4px var(--sensor-bg); }
+.jstep.next .jbox { border-color: var(--link); }
+.jstep.loto.next { border-color: var(--watch); box-shadow: 0 0 0 4px var(--watch-bg); }
+.jstep.loto.next .jbox { border-color: var(--watch); }
+.jstep.next .jtext { font-weight: 600; }
+
+/* done: greyed, with who/when */
+.jstep.done { background: var(--panel-2); }
+.jstep.done .jbox { background: var(--ok); border-color: var(--ok); color: #06130d; }
+:root[data-theme="light"] .jstep.done .jbox { color: #fff; }
+.jstep.done .jtext { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--text-faint); }
+
+/* locked until lock-out is ticked */
+.jstep.locked .jstep-main { cursor: not-allowed; }
+.jstep.locked .jtext { color: var(--text-faint); }
+.jstep.locked .jbox { border-style: dashed; font-size: 18px; background: transparent; }
+
+/* "Why this step?" */
+.jwhy { border-top: 1px solid var(--border); }
+.jwhy summary { cursor: pointer; padding: 10px 14px; min-height: 40px; display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--link); list-style: none; }
+.jwhy summary::-webkit-details-marker { display: none; }
+.jwhy summary::before { content: "▸"; margin-right: 8px; transition: transform .2s var(--ease); }
+.jwhy[open] summary::before { transform: rotate(90deg); }
+.jwhy p { margin: 0; padding: 0 14px 14px 36px; font-size: 14px; line-height: 1.55; color: var(--text-dim); }
+
+/* ---------------------------------------------------------------- release check */
+.jrelease h2 { margin: 0; font-size: 17px; }
+.jrelease p { margin: 0; }
+.jscale { position: relative; height: 12px; margin: 30px 0 30px; }
+.jscale > i { position: absolute; inset: 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--ok) 0 29%, var(--watch) 29% 56%, var(--alarm) 56% 100%); opacity: .85; }
+.jmark, .jlive { position: absolute; top: -4px; width: 2px; height: 20px; background: var(--text); }
+.jmark b, .jlive b { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11.5px; font-weight: 600; }
+.jmark.ok b, .jmark.watch b { top: 22px; color: var(--text-dim); }
+.jmark.rel b, .jmark.alarm b { bottom: 22px; color: var(--text-dim); }
+.jmark.rel { background: var(--link); width: 3px; } .jmark.rel b { color: var(--link); }
+.jlive { background: var(--accent); width: 4px; height: 24px; top: -6px; border-radius: 2px; }
+.jlive b { bottom: 26px; background: var(--accent); color: var(--accent-ink); padding: 0 6px; border-radius: 6px; }
+.jlegend { margin: 0; padding-left: 18px; display: grid; gap: 2px; color: var(--text-dim); }
+.jok { color: var(--ok); font-weight: 600; }
+.jbad { color: var(--alarm); font-weight: 600; }
+.jfin { min-height: 48px; font-size: 16px; }
+
+/* ---------------------------------------------------------------- voice */
+.jvoice h2 { margin: 0; font-size: 17px; }
+.jvoice p { margin: 0; }
+.jvoice .plants { flex-wrap: wrap; }
+.jvoice .plants button { min-height: 40px; flex: 1 1 auto; }
+.jquick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.jquick .btn { min-height: 44px; white-space: normal; text-align: center; line-height: 1.3; }
+.jmute { min-height: 40px; }
+.jmute[aria-pressed="false"] { color: var(--text-dim); }
+.jvoice .bubble { margin-right: 10%; }
+.jvoice .bubble.me { margin: 0 0 0 14%; border-color: var(--border-2); }
+
+/* ---------------------------------------------------------------- work-order list */
+.wo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.wo-row { display: grid; gap: 6px; height: 100%; padding: 14px 16px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--border);
+  color: var(--text); text-decoration: none; transition: border-color .15s var(--ease), background .15s var(--ease); }
+.wo-row:hover { border-color: var(--border-2); background: var(--panel-2); }
+.wo-row:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+.wo-title { font-size: 16px; }
+.wo-explain { color: var(--text-dim); line-height: 1.5; }
+.wo-prog { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.wo-open { float: right; color: var(--link); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .jtext { font-size: 16px; }
+  .jstep-main { padding: 14px 12px; gap: 10px; }
+  .wo-row { padding: 14px; }
+}

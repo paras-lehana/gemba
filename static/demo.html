@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gemba demo · Five Gemini agents walk the plant</title>
+  <meta name="description" content="Watch Gemba: five Gemini agents walk a live digital twin of a factory, link a worn bearing to scrap, a late order and wasted energy, and write one plan that a named person approves.">
+  <meta name="theme-color" content="#0b0d12">
+  <meta property="og:type" content="video.other">
+  <meta property="og:title" content="Gemba · Five Gemini agents walk the plant">
+  <meta property="og:description" content="One plan across reliability, quality, supply, energy and flow. Checked by a simulator, approved by a named person.">
+  <meta property="og:image" content="https://i.ytimg.com/vi/RKwNTZ16CIc/maxresdefault.jpg">
+  <meta property="og:video" content="https://www.youtube.com/watch?v=RKwNTZ16CIc">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="https://i.ytimg.com/vi/RKwNTZ16CIc/maxresdefault.jpg" fetchpriority="high">
+  <link rel="stylesheet" href="/static/css/app.css?v=0.4.3">
+  <script>
+    try { const t = localStorage.getItem("gemba-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <style>
+    /* Demo page: the app's andon tokens; the five agent threads are the only decorative colour. */
+    html, body { height: auto; }
+    body { min-height: 100dvh; }
+    .d-wrap { max-width: 1120px; margin: 0 auto; padding: 0 16px; }
+    .d-bar { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--panel) 92%, transparent);
+      backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+    .d-bar .d-wrap { display: flex; align-items: center; gap: 12px; min-height: 56px; }
+    .d-bar .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 650; }
+    .d-bar nav { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+    .threads5 { display: grid; grid-template-columns: repeat(5, 1fr); height: 3px; }
+    .threads5 i:nth-child(1) { background: var(--rel); } .threads5 i:nth-child(2) { background: var(--qual); }
+    .threads5 i:nth-child(3) { background: var(--sup); } .threads5 i:nth-child(4) { background: var(--ene); }
+    .threads5 i:nth-child(5) { background: var(--flow); }
+
+    .d-hero { padding-block: 28px 8px; display: grid; gap: 14px; }
+    .eyebrow { font: 500 12px/1.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-dim); }
+    .d-hero h1 { font-size: clamp(28px, 6.2vw, 52px); line-height: 1.06; letter-spacing: -.025em; font-weight: 700; max-width: 20ch; }
+    .d-hero h1 em { font-style: normal; color: var(--accent); }
+    :root[data-theme="light"] .d-hero h1 em { color: var(--rel); }
+    .d-lede { font-size: clamp(16px, 2.2vw, 19px); color: var(--text-dim); max-width: 62ch; }
+    .d-lede b { color: var(--text); font-weight: 600; }
+
+    .player { position: relative; aspect-ratio: 16 / 9; border-radius: 16px; overflow: hidden; background: #000;
+      border: 1px solid var(--border-2); box-shadow: var(--shadow); margin-top: 6px; }
+    .player img, .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+    .player button { position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: transparent; cursor: pointer; }
+    .player button::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,8,15,.05) 40%, rgba(5,8,15,.65)); }
+    .play { position: absolute; z-index: 2; left: 16px; bottom: 16px; display: inline-flex; align-items: center; gap: 10px;
+      min-height: 48px; padding: 0 20px 0 16px; border-radius: 999px; background: #f4e8c1; color: #14110a; font-weight: 650; font-size: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.45); transition: transform .25s var(--ease); }
+    .play i { font-style: normal; font-size: 18px; }
+    .player button:hover .play, .player button:focus-visible .play { transform: scale(1.05); }
+    .player .cap { position: absolute; z-index: 2; right: 16px; bottom: 26px; color: #fff; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,.7); }
+    @media (max-width: 520px) { .player .cap { display: none; } .play { left: 12px; bottom: 12px; min-height: 44px; font-size: 15px; } }
+
+    .d-ctas { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 0 6px; }
+    .d-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; border: 1px solid var(--border-2); color: var(--text); background: var(--panel-2); }
+    .d-btn:hover { background: var(--panel-3); }
+    .d-btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+    .d-btn.primary:hover { filter: brightness(.94); }
+    .d-btn.gcr { border-color: color-mix(in srgb, var(--rel) 55%, var(--border-2)); }
+
+    .d-sec { padding-block: 30px 6px; }
+    .d-sec > h2 { font-size: clamp(20px, 3vw, 26px); letter-spacing: -.015em; margin-bottom: 6px; }
+    .d-sec > p.sub { color: var(--text-dim); max-width: 66ch; margin-bottom: 14px; }
+
+    .chain { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; grid-template-columns: 1fr; }
+    .chain li { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; position: relative;
+      border-top: 3px solid var(--c); display: grid; gap: 4px; }
+    .chain .ag { font: 600 12px/1.2 var(--mono); color: var(--c); letter-spacing: .04em; text-transform: uppercase; }
+    .chain strong { font-size: 16px; }
+    .chain span.dim { font-size: 14px; }
+    .chain li.lead { --c: var(--accent); background: var(--panel-2); }
+    :root[data-theme="light"] .chain li.lead { --c: var(--lead); }
+
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .stat b { display: block; font: 600 clamp(24px, 4vw, 32px)/1.1 var(--mono); letter-spacing: -.02em; }
+    .stat span { color: var(--text-dim); font-size: 14px; }
+
+    .cols { display: grid; gap: 10px; grid-template-columns: 1fr; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: grid; gap: 6px; }
+    .card h3 { font-size: 16px; }
+    .card p { color: var(--text-dim); font-size: 14.5px; }
+    .gsvc { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .gsvc li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 14.5px; color: var(--text-dim); }
+    .gsvc li b { color: var(--text); font-weight: 600; }
+    .gsvc li::before { content: "✦"; color: var(--accent); }
+    :root[data-theme="light"] .gsvc li::before { color: var(--rel); }
+
+    .d-foot { margin-top: 34px; border-top: 1px solid var(--border); padding: 18px 0 calc(28px + env(safe-area-inset-bottom)); color: var(--text-dim); font-size: 13.5px; }
+    .d-foot .d-wrap { display: grid; gap: 8px; }
+
+    @media (min-width: 700px) {
+      .d-hero { padding-top: 44px; }
+      .chain { grid-template-columns: repeat(2, 1fr); }
+      .stats { grid-template-columns: repeat(4, 1fr); }
+      .cols { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (min-width: 1000px) {
+      .chain { grid-template-columns: repeat(5, 1fr); } .chain li.lead { grid-column: 1 / -1; }
+      /* Wide screens: text left, video right, so the video is on the first screen. */
+      .d-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); column-gap: 36px; align-items: start; padding-top: 36px;
+        grid-template-areas: "eye vid" "h1 vid" "lede vid" "ctas vid" "note vid"; grid-template-rows: auto auto auto auto 1fr; }
+      .d-hero .eyebrow { grid-area: eye; } .d-hero h1 { grid-area: h1; font-size: clamp(32px, 3.3vw, 46px); }
+      .d-hero .d-lede { grid-area: lede; font-size: 17px; } .d-hero .player { grid-area: vid; margin-top: 0; }
+      .d-hero .d-ctas { grid-area: ctas; padding-top: 4px; } .d-hero .d-note { grid-area: note; }
+    }
+    @media (max-width: 520px) { .d-bar .hide-sm { display: none; } .d-btn { flex: 1 1 100%; justify-content: center; } }
+    @media (prefers-reduced-motion: reduce) { .play { transition: none; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#video">Skip to the video</a>
+  <header class="d-bar">
+    <div class="d-wrap">
+      <a class="brand" href="/" aria-label="Gemba live plant"><span class="brand-mark" aria-hidden="true">現場</span><span>Gemba</span></a>
+      <nav aria-label="Demo page">
+        <a class="d-btn hide-sm" href="/">Open the live plant</a>
+        <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch light or dark theme" title="Theme">◐</button>
+      </nav>
+    </div>
+    <div class="threads5" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  </header>
+
+  <main>
+    <section class="d-wrap d-hero" aria-labelledby="d-title">
+      <p class="eyebrow">AI Builder Cup 2026 · Manufacturing: Intelligent Operations &amp; Industrial Efficiency</p>
+      <h1 id="d-title">Five Gemini agents walk the plant. <em>One plan.</em> A named person decides.</h1>
+      <p class="d-lede">Gemba (現場, “the real place”) is an AI operations floor for small and mid-size manufacturers. It turns scattered alarms into
+        <b>one plan a plant can test, check and act on today</b>: a worn bearing, the scrap it causes, the order it puts at risk and the energy it wastes.</p>
+
+      <div class="player" id="video">
+        <button type="button" id="play" aria-label="Play the Gemba demo video: Understand our Gemba">
+          <img src="https://i.ytimg.com/vi/RKwNTZ16CIc/maxresdefault.jpg" alt="" width="1280" height="720" fetchpriority="high"
+               onerror="this.onerror=null; this.src='https://i.ytimg.com/vi/RKwNTZ16CIc/hqdefault.jpg'">
+          <span class="play" aria-hidden="true"><i>▶</i>Play the demo</span>
+          <span class="cap">Understand our Gemba · by Abhinav Kaushik</span>
+        </button>
+        <noscript><a class="d-btn primary" style="position:absolute;inset:auto 16px 16px auto" href="https://youtu.be/RKwNTZ16CIc">Watch on YouTube</a></noscript>
+      </div>
+
+      <div class="d-ctas">
+        <a class="d-btn primary" href="/">Open the live plant →</a>
+        <a class="d-btn gcr" id="gcr-link" href="#" hidden>☁ Run it on Google Cloud Run</a>
+        <a class="d-btn" id="gh-link" href="https://github.com/paras-lehana/gemba" target="_blank" rel="noopener">Source code on GitHub</a>
+        <a class="d-btn" href="https://youtu.be/RKwNTZ16CIc" target="_blank" rel="noopener">Watch on YouTube</a>
+      </div>
+      <p class="tiny faint d-note">No sign-in needed. Every visitor gets a private copy of the simulated plant, so you can approve plans and run drills freely.</p>
+    </section>
+
+    <section class="d-wrap d-sec" aria-labelledby="chain-h">
+      <h2 id="chain-h">One problem, four departments, one walk</h2>
+      <p class="sub">The five agents look at the same plant at the same time, each through one word of the theme. Gemba’s Lead links what they find,
+        like falling dominoes, and writes plan cards whose impact the plant simulator computes, not the language model.</p>
+      <ol class="chain">
+        <li style="--c: var(--rel)"><span class="ag">Reliability</span><strong>A spindle bearing is wearing</strong><span class="dim">VMC-204 vibration rises steadily; Gemba gives a time-to-trip range, not just a red light.</span></li>
+        <li style="--c: var(--qual)"><span class="ag">Quality</span><strong>Scrap climbs to 3.4 %</strong><span class="dim">Against the machine’s normal 0.8 %. Gemini vision boxes the chatter marks on the part photo.</span></li>
+        <li style="--c: var(--sup)"><span class="ag">Supply</span><strong>An order slips to 97 % cover</strong><span class="dim">Fewer good parts put customer order SO-24117 at risk; the spare bearing is in another plant.</span></li>
+        <li style="--c: var(--ene)"><span class="ag">Energy</span><strong>25 % more energy per good part</strong><span class="dim">A struggling machine wastes power and carbon; off-peak tariffs show the cheapest repair window.</span></li>
+        <li style="--c: var(--flow)"><span class="ag">Flow</span><strong>The whole line slows down</strong><span class="dim">OEE drops; the plan protects the line, not just the machine.</span></li>
+        <li class="lead"><span class="ag">Gemba Lead · the plan</span><strong>Move the spare bearing, repair VMC-204 off-peak, protect the order</strong><span class="dim">Simulated over the next days: order cover back above 100 %, about 32 machine-hours saved. Nothing happens until a named person approves.</span></li>
+      </ol>
+    </section>
+
+    <section class="d-wrap d-sec" aria-labelledby="num-h">
+      <h2 id="num-h">Measured on the live prototype</h2>
+      <div class="stats">
+        <div class="stat"><b>5 + 1</b><span>Gemini agents: five specialists and a Lead</span></div>
+        <div class="stat"><b>18</b><span>tools over machine, quality, order, stock and energy data</span></div>
+        <div class="stat"><b>≈ 45 s</b><span>for a full walk with dozens of real tool calls</span></div>
+        <div class="stat"><b>4</b><span>languages for technicians: Hindi, Marathi, Thai, English</span></div>
+      </div>
+    </section>
+
+    <section class="d-wrap d-sec" aria-labelledby="why-h">
+      <h2 id="why-h">Why plants can trust it</h2>
+      <div class="cols">
+        <div class="card"><h3>Checked before it is approved</h3><p>Every number on a plan card comes from the plant simulator. Drag a repair to another time and see good parts, scrap and money change before anyone signs.</p></div>
+        <div class="card"><h3>A person always decides</h3><p>Agents propose; a named person approves; work orders follow. A frozen sensor never sends a crew, and every agent step is in the audit log.</p></div>
+        <div class="card"><h3>It teaches while it helps</h3><p>Learn mode, drills on the live plant and plain-language explanations of every term, so a beginner can run the floor on day one.</p></div>
+      </div>
+    </section>
+
+    <section class="d-wrap d-sec" aria-labelledby="g-h">
+      <h2 id="g-h">Built with Google</h2>
+      <ul class="gsvc">
+        <li><span><b>Gemini</b> powers every agent, the Lead’s plan, vision inspection with boxes, voice help on the shop floor and the Learn-mode tutor.</span></li>
+        <li><span><b>Gemini image generation</b> made the sample part photos the Quality station inspects.</span></li>
+        <li><span><b>Google Cloud Run</b> runs the whole product as one container; on Cloud Run, Gemini is called through Google Cloud’s Agent Platform (Vertex AI) with a service account, no keys in code.</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="d-foot">
+    <div class="d-wrap">
+      <p><b>Team Aidhunik India</b> · Paras Lehana (team leader) · Abhinav Kaushik. Demo video by Abhinav Kaushik.</p>
+      <p>All plant data is synthetic: a fictional company, Meridian Precision Components, with plants in Pune, Chakan and Rayong.</p>
+      <p><a href="/">Live plant</a> · <a id="foot-gcr" href="#" hidden>Google Cloud Run</a> · <a href="https://github.com/paras-lehana/gemba" target="_blank" rel="noopener">GitHub</a></p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var H = window.GEMBA_HOSTING || {};
+      var id = H.video_id || "RKwNTZ16CIc";
+      var btn = document.getElementById("play");
+      btn.addEventListener("click", function () {
+        var f = document.createElement("iframe");
+        f.src = "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(id) + "?autoplay=1&rel=0&playsinline=1";
+        f.title = "Gemba demo video: Understand our Gemba";
+        f.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        f.referrerPolicy = "strict-origin-when-cross-origin";
+        f.allowFullscreen = true;
+        btn.replaceWith(f);
+        f.focus();
+      });
+      // On the rig the button points to Cloud Run; on Cloud Run it points back to the main site.
+      var gcr = document.getElementById("gcr-link"), foot = document.getElementById("foot-gcr");
+      if (H.on_cloud_run && H.home_url) {
+        gcr.textContent = "☁ You are on Google Cloud Run · main site"; gcr.href = H.home_url; gcr.hidden = false;
+      } else if (H.cloud_run_url) {
+        gcr.href = H.cloud_run_url; gcr.hidden = false; foot.href = H.cloud_run_url; foot.hidden = false;
+      }
+      var tb = document.getElementById("theme-btn");
+      tb.addEventListener("click", function () {
+        var r = document.documentElement, t = r.dataset.theme === "light" ? "dark" : "light";
+        r.dataset.theme = t; try { localStorage.setItem("gemba-theme", t); } catch (e) {}
+      });
+    })();
+  </script>
+</body>
+</html>

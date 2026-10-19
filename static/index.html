@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gemba · AI operations floor</title>
+  <meta name="description" content="Gemba sends a team of Gemini agents on a walk through your factory and turns machine, quality, supply and energy data into one plan a person approves.">
+  <meta name="theme-color" content="#0b0d12">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/walk.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/job.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/machine.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/floor.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/learn.css?v=0.4.3">
+  <link rel="stylesheet" href="/static/css/cad.css?v=0.4.3">
+  <script type="importmap">
+    {"imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }}
+  </script>
+  <script>
+    try { const t = localStorage.getItem("gemba-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app">
+    <header class="appbar">
+      <a class="brand" href="#/" aria-label="Gemba home">
+        <span class="brand-mark" aria-hidden="true">現場</span>
+        <span class="brand-name">Gemba</span>
+      </a>
+      <nav class="plants" aria-label="Plant">
+        <button data-plant="PUN" aria-pressed="true">Pune</button>
+        <button data-plant="CHK" aria-pressed="false">Chakan</button>
+        <button data-plant="RAY" aria-pressed="false">Rayong</button>
+      </nav>
+      <div class="appbar-right">
+        <span class="clock" id="clock" title="Plant local time (simulated plant)"><span class="dot live" aria-hidden="true"></span><span id="clock-text">--:--</span></span>
+        <span class="model-badge" id="model-badge" title="Which AI model is answering">Gemini</span>
+        <button class="icon-btn" id="tour-btn" aria-label="Start the guided tour" title="Guided tour">?</button>
+        <button class="icon-btn" id="theme-btn" aria-label="Switch light or dark theme" title="Theme">◐</button>
+        <button class="icon-btn" id="presenter-btn" aria-label="Presenter controls" title="Presenter controls">⏱</button>
+      </div>
+      <div class="threads" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    </header>
+
+    <nav class="rail" aria-label="Main">
+      <a href="#/" data-route="floor"><span class="ico" aria-hidden="true">▦</span><span>Floor</span></a>
+      <a href="#/walk" data-route="walk"><span class="ico" aria-hidden="true">✦</span><span><span class="hide-phone">Gemba walk</span><span class="show-phone">Walk</span></span><b class="badge" id="badge-cards" hidden></b></a>
+      <a href="#/ask" data-route="ask"><span class="ico" aria-hidden="true">?</span><span>Ask</span></a>
+      <a href="#/learn" data-route="learn"><span class="ico" aria-hidden="true">◈</span><span>Learn</span></a>
+      <a href="#/quality" data-route="quality"><span class="ico" aria-hidden="true">◎</span><span>Quality</span></a>
+      <a href="#/energy" data-route="energy"><span class="ico" aria-hidden="true">ϟ</span><span>Energy</span></a>
+      <a href="#/supply" data-route="supply"><span class="ico" aria-hidden="true">⇄</span><span>Supply</span></a>
+      <a href="#/work" data-route="work"><span class="ico" aria-hidden="true">✓</span><span>Work</span><b class="badge" id="badge-wo" hidden></b></a>
+      <a href="#/trust" data-route="trust"><span class="ico" aria-hidden="true">⛨</span><span>Trust</span></a>
+    </nav>
+
+    <main id="main" tabindex="-1">
+      <noscript><p class="pad">Gemba needs JavaScript to show the live plant.</p></noscript>
+    </main>
+  </div>
+
+  <dialog id="presenter" class="sheet" aria-labelledby="presenter-title">
+    <form method="dialog" class="sheet-head"><h2 id="presenter-title">Presenter controls</h2><button class="icon-btn" aria-label="Close">✕</button></form>
+    <p class="dim small">Only your own copy of the plant changes. Use these to show how Gemba reacts to real situations.</p>
+    <h3>Simulation speed</h3>
+    <div class="row wrap gap" id="speed-list"></div>
+    <p class="tiny dim">At 10× one real minute is ten plant minutes, so wear, scrap and energy build up faster.</p>
+    <h3>Move the clock</h3>
+    <div class="row wrap gap">
+      <button class="btn" data-jump="1">+1 hour</button><button class="btn" data-jump="6">+6 hours</button>
+      <button class="btn" data-jump="12">+12 hours</button><button class="btn" data-jump="24">+1 day</button>
+    </div>
+    <h3>Faults and drills</h3>
+    <p class="tiny dim">"Now" starts the fault immediately; "Drill" starts it in 30 seconds so you can watch Gemba Watch notice it and call the agents.</p>
+    <div class="grid" id="inject-list" style="gap:8px"></div>
+    <div class="row wrap gap" style="margin-top:10px">
+      <button class="btn small" id="notify-btn">🔔 Browser alerts</button>
+      <a class="btn small" id="probe-link" href="/probe" target="_blank" rel="noopener">📱 Use a phone as a sensor</a>
+      <a class="btn small" href="/api/mtconnect/current?machine=VMC-204" target="_blank" rel="noopener">📡 MTConnect stream (VMC-204)</a>
+    </div>
+    <h3>Story</h3>
+    <button class="btn danger" id="reset-btn">Reset demo</button>
+    <p class="dim small" id="presenter-state"></p>
+  </dialog>
+
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <script src="/static/config.js?v=0.4.3"></script>
+  <script type="module" src="/static/js/app.js?v=0.4.3"></script>
+</body>
+</html>
